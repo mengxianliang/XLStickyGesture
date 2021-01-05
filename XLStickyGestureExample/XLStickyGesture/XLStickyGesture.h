@@ -11,8 +11,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface XLStickyGesture : UIPanGestureRecognizer
 
-//The color of sticky area,default is blackColor.
+//the color of sticky area,default is blackColor.
 @property (nonatomic, strong) UIColor *stickyAreaColor;
+
+//maximum drag distance,default is 100
+@property (nonatomic, assign) CGFloat maxDragDistance;
 
 @end
 

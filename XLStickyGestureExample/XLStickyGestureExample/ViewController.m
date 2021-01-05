@@ -39,6 +39,8 @@
     [self.view addSubview:label1];
     
     XLStickyGesture *gesture1 = [[XLStickyGesture alloc] init];
+    gesture1.maxDragDistance = 150;
+    gesture1.stickyAreaColor = RedColor;
     [label1 addGestureRecognizer:gesture1];
     
     
@@ -55,6 +57,8 @@
     [self.view addSubview:label2];
     
     XLStickyGesture *gesture2 = [[XLStickyGesture alloc] init];
+    gesture2.maxDragDistance = 150;
+    gesture2.stickyAreaColor = GrayColor;
     [label2 addGestureRecognizer:gesture2];
 }
 

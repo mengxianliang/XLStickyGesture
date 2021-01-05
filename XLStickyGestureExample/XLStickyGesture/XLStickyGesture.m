@@ -7,9 +7,6 @@
 
 #import "XLStickyGesture.h"
 
-static CGFloat fixPointOriginHeight = 60.0f;
-static CGFloat fixPointMaxDragDistance = 300.0f;
-
 @interface XLStickyGesture ()
 
 @property (nonatomic, strong) UIView *fixPoint;
@@ -45,8 +42,7 @@ static CGFloat fixPointMaxDragDistance = 300.0f;
 
 - (void)initStickyGesture {
     //固定点
-    self.fixPoint = [[UIView alloc] initWithFrame:CGRectMake(0, 0, fixPointOriginHeight, fixPointOriginHeight)];
-    self.fixPoint.layer.cornerRadius = fixPointOriginHeight/2.0f;
+    self.fixPoint = [[UIView alloc] init];
     self.fixPoint.layer.masksToBounds = YES;
     
     //阴影
@@ -57,8 +53,11 @@ static CGFloat fixPointMaxDragDistance = 300.0f;
     [self.backgroundView addSubview:self.fixPoint];
     [self.backgroundView.layer addSublayer:self.shadowLayer];
     
-    //初始化背景颜色
+    //设置默认颜色
     self.stickyAreaColor = [UIColor blackColor];
+    
+    //设置默认最大拖拽距离
+    self.maxDragDistance = 100;
 }
 
 //拖拽开始
@@ -81,31 +80,33 @@ static CGFloat fixPointMaxDragDistance = 300.0f;
     touchView.frame = convertRect;
     
     //设置固定点的位置
+    self.fixPoint.bounds = CGRectMake(0, 0, touchView.bounds.size.height, touchView.bounds.size.height);
     self.fixPoint.center = touchView.center;
+    self.fixPoint.layer.cornerRadius = self.fixPoint.bounds.size.height/2.0f;
 }
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
     [super touchesMoved:touches withEvent:event];
     self.state = UIGestureRecognizerStateChanged;
     
+    //获取手指位置
     CGPoint location = [self locationInView:self.backgroundView];
-    
+    //更新view位置
     self.view.center = location;
     
     //不动点信息
     CGFloat x1 = self.fixPoint.center.x;
     CGFloat y1 = self.fixPoint.center.y;
     
-    
     //拖动点信息
     CGFloat x2 = self.view.center.x;
     CGFloat y2 = self.view.center.y;
     
-    
     //计算出两点间距离
     CGFloat d = sqrtf((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
     
-    if (d >= fixPointMaxDragDistance) {
+    //更新显示/隐藏
+    if (d >= self.maxDragDistance) {
         self.shadowLayer.hidden = YES;
         [self.shadowLayer removeAllAnimations];
         self.fixPoint.hidden = YES;
@@ -117,22 +118,24 @@ static CGFloat fixPointMaxDragDistance = 300.0f;
         self.shouldRemoveTouchView = NO;
     }
     
-    CGFloat progress = d/fixPointMaxDragDistance;
+    //计算效果进度 0 - 1
+    CGFloat progress = d/self.maxDragDistance;
     
     //固定点最小高度
-    CGFloat fixPoint1MiniHeight = 20.0f;
-    CGFloat plusHeight = 40;
-    CGFloat fixPoint1Height = fixPoint1MiniHeight + plusHeight*(1 - progress);
-    NSLog(@"fixPoint1Height = %f",fixPoint1Height);
-    self.fixPoint.bounds = CGRectMake(0, 0, fixPoint1Height, fixPoint1Height);
+    CGFloat fixPointMiniHeight = 0.4*self.view.bounds.size.height;
+    CGFloat fixPointPlusHeight = self.view.bounds.size.height - fixPointMiniHeight;
+    CGFloat fixPointHeight = fixPointMiniHeight + fixPointPlusHeight*(1 - progress);
+    self.fixPoint.bounds = CGRectMake(0, 0, fixPointHeight, fixPointHeight);
     self.fixPoint.center = CGPointMake(x1, y1);
-    self.fixPoint.layer.cornerRadius = fixPoint1Height/2.0f;
+    self.fixPoint.layer.cornerRadius = fixPointHeight/2.0f;
     
+    CGFloat r1 = fixPointHeight/2.0f;
     
-    NSLog(@"两球间距：%f",d);
+    CGFloat dragPointMiniHeight = 0.9*self.view.bounds.size.height;
+    CGFloat dragPointPlusHeight = self.view.bounds.size.height - dragPointMiniHeight;
+    CGFloat dragPointHeight = dragPointMiniHeight + dragPointPlusHeight*(1 - progress);
     
-    CGFloat r1 = self.fixPoint.bounds.size.width/2.0f;
-    CGFloat r2 = self.view.bounds.size.width/2.0f;
+    CGFloat r2 = dragPointHeight/2.0f;
     
     //计算出角θ的正弦和余弦值
     CGFloat sinθ = (x2 - x1)/d;
@@ -144,9 +147,15 @@ static CGFloat fixPointMaxDragDistance = 300.0f;
     CGPoint pointC = CGPointMake(x2 - r2*cosθ, y2 + r2*sinθ);
     CGPoint pointD = CGPointMake(x2 + r2*cosθ, y2 - r2*sinθ);
     
-    //计算出点A点B计算出点O、P的坐标
-    CGPoint pointE = CGPointMake(pointA.x + (d/2)*sinθ, pointA.y + (d/2)*cosθ);
-    CGPoint pointF = CGPointMake(pointB.x + (d/2)*sinθ, pointB.y + (d/2)*cosθ);
+    NSLog(@"progress = %f",progress);
+    //计算出A1和B1
+    CGFloat scale = (1 - progress)*0.8;
+    CGPoint pointA1 = CGPointMake(x1 - r1*cosθ*scale, y1 + r1*sinθ*scale);
+    CGPoint pointB1 = CGPointMake(x1 + r1*cosθ*scale, y1 - r1*sinθ*scale);
+    
+    //计算出点A1点B计算出点E、F的坐标
+    CGPoint pointE = CGPointMake(pointA1.x + (d/2)*sinθ, pointA1.y + (d/2)*cosθ);
+    CGPoint pointF = CGPointMake(pointB1.x + (d/2)*sinθ, pointB1.y + (d/2)*cosθ);
     
     UIBezierPath *path = [UIBezierPath bezierPath];
     [path moveToPoint:pointA];
@@ -194,7 +203,7 @@ static CGFloat fixPointMaxDragDistance = 300.0f;
 }
 
 - (void)removeTouchView {
-    [UIView animateWithDuration:0.2 animations:^{
+    [UIView animateWithDuration:0.15 animations:^{
         self.view.alpha = 0.0f;
     } completion:^(BOOL finished) {
         [self.backgroundView removeFromSuperview];
@@ -204,8 +213,17 @@ static CGFloat fixPointMaxDragDistance = 300.0f;
 #pragma mark - Setter
 - (void)setStickyAreaColor:(UIColor *)stickyAreaColor {
     _stickyAreaColor = stickyAreaColor;
+    
     self.shadowLayer.fillColor = stickyAreaColor.CGColor;
     self.fixPoint.backgroundColor = stickyAreaColor;
+    
+//    //测试代码
+//    self.shadowLayer.strokeColor = stickyAreaColor.CGColor;
+//    self.shadowLayer.fillColor = [UIColor clearColor].CGColor;
+//
+//    self.fixPoint.backgroundColor = [UIColor clearColor];
+//    self.fixPoint.layer.borderWidth = 1.0f;
+//    self.fixPoint.layer.borderColor = stickyAreaColor.CGColor;
 }
 
 
